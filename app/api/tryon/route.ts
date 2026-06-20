@@ -29,10 +29,10 @@ export async function POST(req: Request) {
   }
 
   try {
-    const { imageUrl } = await runHfTryOn(body.personImage, body.garmentImage, body.garmentNote ?? "");
+    const { data, mimeType } = await runHfTryOn(body.personImage, body.garmentImage, body.garmentNote ?? "");
     return Response.json({
       ok: true,
-      image: { url: imageUrl },
+      image: { data, mimeType },
       note: body.garmentNote
         ? `Styled per your note: "${body.garmentNote}". Drape and fit are rendered by the IDM-VTON model.`
         : "Drape and fit are rendered by the IDM-VTON virtual try-on model.",

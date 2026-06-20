@@ -16,22 +16,35 @@ function toBlob(img: TryOnImageInput): Blob {
   return new Blob([buffer], { type: img.mimeType || "image/png" });
 }
 
-/** Best-effort extraction — community Spaces return file results in a few
- *  different shapes depending on Gradio version, so we check the common ones. */
-function extractImageUrl(item: any): string | null {
-  if (!item) return null;
-  if (typeof item === "string") return item;
-  if (item.url) return item.url;
-  if (item.path && item.url === undefined && typeof item.path === "string" && item.path.startsWith("http")) {
-    return item.path;
+/** Pulls a usable root origin (e.g. "https://yisol-idm-vton.hf.space") out of
+ *  whatever shape the connected client exposes it as — this varies a bit
+ *  across @gradio/client versions. */
+function resolveSpaceRoot(client: any): string | null {
+  const candidates = [
+    client?.config?.root,
+    client?.config?.root_url,
+    client?.config?.api_url,
+    client?.app_reference,
+  ];
+  for (const c of candidates) {
+    if (typeof c === "string" && c.startsWith("http")) return c.replace(/\/$/, "");
   }
-  if (item.image?.url) return item.image.url;
-  if (item.value?.url) return item.value.url;
   return null;
 }
 
+/** Community Spaces return file results in a few different shapes depending
+ *  on the Gradio version — this normalizes to {url, path}. */
+function extractFileRef(item: any): { url?: string; path?: string } | null {
+  if (!item) return null;
+  if (typeof item === "string") return { url: item.startsWith("http") ? item : undefined, path: item };
+  const candidate = item.url || item.path ? item : item.image || item.value;
+  if (!candidate) return null;
+  return { url: candidate.url, path: candidate.path };
+}
+
 export interface TryOnRunResult {
-  imageUrl: string;
+  data: string; // base64
+  mimeType: string;
 }
 
 export async function runHfTryOn(
@@ -53,21 +66,57 @@ export async function runHfTryOn(
   });
 
   const data = (result as any)?.data;
-  const imageUrl = extractImageUrl(Array.isArray(data) ? data[0] : data);
+  const ref = extractFileRef(Array.isArray(data) ? data[0] : data);
 
-  if (!imageUrl) {
+  if (!ref) {
     const err: any = new Error("The try-on Space returned an unexpected response shape.");
     err.status = 502;
     throw err;
   }
 
-  return { imageUrl };
+  // Prefer an already-absolute URL. If we only got a server-relative path,
+  // construct it from the resolved Space root ourselves.
+  let absoluteUrl = ref.url && ref.url.startsWith("http") ? ref.url : null;
+  if (!absoluteUrl && ref.path) {
+    const root = resolveSpaceRoot(client);
+    if (root) {
+      const path = ref.path.startsWith("/") ? ref.path : `/${ref.path}`;
+      absoluteUrl = `${root}/file=${path}`;
+    }
+  }
+
+  if (!absoluteUrl) {
+    const err: any = new Error("Could not resolve a fetchable URL for the try-on result image.");
+    err.status = 502;
+    throw err;
+  }
+
+  // Fetch the bytes ourselves rather than handing a possibly-fragile URL to
+  // the browser — sidesteps relative-path and hotlink/CORS surprises.
+  const imageRes = await fetch(absoluteUrl, token ? { headers: { Authorization: `Bearer ${token}` } } : undefined);
+  if (!imageRes.ok) {
+    const err: any = new Error(`Fetching the rendered image failed with status ${imageRes.status}.`);
+    err.status = 502;
+    throw err;
+  }
+
+  const buffer = Buffer.from(await imageRes.arrayBuffer());
+  const mimeType = imageRes.headers.get("content-type") || "image/png";
+
+  return { data: buffer.toString("base64"), mimeType };
 }
 
 export function friendlyHfTryOnError(err: unknown): { message: string; status: number } {
   const raw = err instanceof Error ? err.message : String(err);
   const status = (err as { status?: number })?.status ?? 500;
 
+  if (/Could not resolve app config/i.test(raw)) {
+    return {
+      status: 502,
+      message:
+        "The Gradio client couldn't resolve the Space's config from this server environment. Try setting HF_TRYON_SPACE in .env.local to the full URL (e.g. https://yisol-idm-vton.hf.space) instead of the \"user/space\" shorthand.",
+    };
+  }
   if (/queue|busy|GPU|quota/i.test(raw)) {
     return {
       status: 503,
