@@ -1,4 +1,5 @@
-import { hfChatCompletion, friendlyHfTextError, missingTokenResponse, errorResponse, getHfToken, ChatMessage } from "@/lib/huggingface";
+import { geminiChatCompletion, friendlyGeminiError, missingGeminiKeyResponse, getGeminiKey, ChatMessage } from "@/lib/gemini";
+import { errorResponse } from "@/lib/api-utils";
 
 export const runtime = "nodejs";
 
@@ -9,7 +10,7 @@ interface StylistBody {
 const SYSTEM = `You are the Cloakroom AI Stylist, a roadmap preview feature for a fashion AI platform. You give warm, specific, brief styling advice (outfit pairing, fit, occasion-appropriateness, color combinations). Ask at most one short clarifying question if truly needed, otherwise give concrete suggestions. Keep every reply under 80 words. Never mention you are an AI model from a specific company; you are "the Cloakroom Stylist".`;
 
 export async function POST(req: Request) {
-  if (!getHfToken()) return missingTokenResponse();
+  if (!getGeminiKey()) return missingGeminiKeyResponse();
 
   let body: StylistBody;
   try {
@@ -30,10 +31,10 @@ export async function POST(req: Request) {
   ];
 
   try {
-    const reply = await hfChatCompletion(messages, 0.8);
+    const reply = await geminiChatCompletion(messages, 0.8);
     return Response.json({ ok: true, reply: reply.trim() });
   } catch (err) {
-    const { message, status } = friendlyHfTextError(err);
+    const { message, status } = friendlyGeminiError(err);
     return errorResponse(message, status);
   }
 }

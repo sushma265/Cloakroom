@@ -1,4 +1,5 @@
-import { hfChatCompletion, friendlyHfTextError, missingTokenResponse, errorResponse, getHfToken } from "@/lib/huggingface";
+import { geminiChatCompletion, friendlyGeminiError, missingGeminiKeyResponse, getGeminiKey } from "@/lib/gemini";
+import { errorResponse } from "@/lib/api-utils";
 
 export const runtime = "nodejs";
 
@@ -7,7 +8,7 @@ interface InsightsBody {
 }
 
 export async function POST(req: Request) {
-  if (!getHfToken()) return missingTokenResponse();
+  if (!getGeminiKey()) return missingGeminiKeyResponse();
 
   let body: InsightsBody;
   try {
@@ -28,10 +29,10 @@ ${metricsText}
 Write a tight executive summary for a fashion brand merchandiser: 2 sentences on what's working, 1 sentence flagging the single biggest risk or opportunity, and 1 short actionable recommendation. Plain text, no markdown, no headers, under 75 words total. Speak directly to "you".`;
 
   try {
-    const summary = await hfChatCompletion([{ role: "user", content: prompt }], 0.6);
+    const summary = await geminiChatCompletion([{ role: "user", content: prompt }], 0.6);
     return Response.json({ ok: true, summary: summary.trim() });
   } catch (err) {
-    const { message, status } = friendlyHfTextError(err);
+    const { message, status } = friendlyGeminiError(err);
     return errorResponse(message, status);
   }
 }

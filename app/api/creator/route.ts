@@ -1,4 +1,5 @@
-import { hfChatCompletion, friendlyHfTextError, missingTokenResponse, errorResponse, getHfToken } from "@/lib/huggingface";
+import { geminiChatCompletion, friendlyGeminiError, missingGeminiKeyResponse, getGeminiKey } from "@/lib/gemini";
+import { errorResponse } from "@/lib/api-utils";
 
 export const runtime = "nodejs";
 
@@ -20,7 +21,7 @@ const SYSTEM = `You are Cloakroom's Creator Studio copywriter. Creators turn a s
 }`;
 
 export async function POST(req: Request) {
-  if (!getHfToken()) return missingTokenResponse();
+  if (!getGeminiKey()) return missingGeminiKeyResponse();
 
   let body: CreatorBody;
   try {
@@ -40,7 +41,7 @@ Vibe / aesthetic: ${body.vibe || "everyday, approachable"}
 Extra notes: ${body.notes || "none"}`;
 
   try {
-    const raw = await hfChatCompletion(
+    const raw = await geminiChatCompletion(
       [
         { role: "system", content: SYSTEM },
         { role: "user", content: userPrompt },
@@ -53,7 +54,7 @@ Extra notes: ${body.notes || "none"}`;
 
     return Response.json({ ok: true, drop: parsed });
   } catch (err) {
-    const { message, status } = friendlyHfTextError(err);
+    const { message, status } = friendlyGeminiError(err);
     return errorResponse(message, status);
   }
 }

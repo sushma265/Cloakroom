@@ -33,7 +33,7 @@ export default function Footer() {
         </div>
 
         <div className="flex items-center gap-6 font-tag text-xs uppercase tracking-wide text-creamDim/60">
-          <span>Powered by Hugging Face</span>
+          <span>Hugging Face (image) + Gemini 2.5 Flash (text)</span>
           <Link href="/demo" className="text-brassLight hover:text-brass">
             Live demo →
           </Link>

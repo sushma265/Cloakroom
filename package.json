@@ -2,7 +2,7 @@
   "name": "cloakroom-prototype",
   "version": "0.1.0",
   "private": true,
-  "description": "Cloakroom — unified AI rails for fashion commerce. Hackathon prototype powered by Gemini 2.5 Flash.",
+  "description": "Cloakroom — unified AI rails for fashion commerce. Hackathon prototype: Hugging Face for image generation (virtual try-on), Gemini 2.5 Flash for everything else.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

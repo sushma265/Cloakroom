@@ -1,4 +1,4 @@
-import { errorResponse } from "@/lib/huggingface";
+import { errorResponse } from "@/lib/api-utils";
 import { runHfTryOn, friendlyHfTryOnError } from "@/lib/hf-tryon";
 
 export const runtime = "nodejs";

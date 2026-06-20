@@ -20,14 +20,26 @@ export default function DemoShell({ initialTab }: { initialTab: string }) {
   const [active, setActive] = useState(
     TABS.some((t) => t.id === initialTab) ? initialTab : "tryon"
   );
-  const [configured, setConfigured] = useState<boolean | null>(null);
+  const [hfConfigured, setHfConfigured] = useState<boolean | null>(null);
+  const [geminiConfigured, setGeminiConfigured] = useState<boolean | null>(null);
 
   useEffect(() => {
     fetch("/api/health")
       .then((r) => r.json())
-      .then((d) => setConfigured(Boolean(d.configured)))
-      .catch(() => setConfigured(false));
+      .then((d) => {
+        setHfConfigured(Boolean(d.hf));
+        setGeminiConfigured(Boolean(d.gemini));
+      })
+      .catch(() => {
+        setHfConfigured(false);
+        setGeminiConfigured(false);
+      });
   }, []);
+
+  // tryon needs Hugging Face; the other three panels need Gemini.
+  const needsBanner =
+    active === "tryon" ? hfConfigured === false : geminiConfigured === false;
+  const bannerProvider = active === "tryon" ? "huggingface" : "gemini";
 
   return (
     <main className="min-h-screen bg-grain pb-24">
@@ -57,11 +69,11 @@ export default function DemoShell({ initialTab }: { initialTab: string }) {
           Try the AI rail yourself
         </h1>
         <p className="mt-2 max-w-2xl text-sm text-creamDim">
-          Every panel below calls Hugging Face directly — open-model chat completions for
-          the text features, and a real virtual try-on model for the render.
+          The try-on render runs on Hugging Face; storefront copy, ROI insights, and the
+          stylist chat run on Gemini 2.5 Flash.
         </p>
 
-        {configured === false && <div className="mt-6"><SetupBanner /></div>}
+        {needsBanner && <div className="mt-6"><SetupBanner provider={bannerProvider} /></div>}
 
         <div className="mt-8">
           <DemoTabs tabs={TABS} active={active} onChange={setActive} />

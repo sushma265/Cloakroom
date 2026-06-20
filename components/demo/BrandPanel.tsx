@@ -103,7 +103,7 @@ export default function BrandPanel() {
       <h3 className="font-display text-xl text-cream">Brand ROI dashboard</h3>
       <p className="mt-1.5 max-w-2xl text-sm text-creamDim">
         Mock campaign data for a mid-size brand running on Cloakroom's rails. Generate an
-        executive summary to see an open model read the metrics like a merchandiser would.
+        executive summary to see Gemini 2.5 Flash read the metrics like a merchandiser would.
       </p>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
