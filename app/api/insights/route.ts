@@ -1,17 +1,13 @@
-import { getGenAIClient, missingKeyResponse, errorResponse, TEXT_MODEL } from "@/lib/gemini";
+import { hfChatCompletion, friendlyHfTextError, missingTokenResponse, errorResponse, getHfToken } from "@/lib/huggingface";
 
 export const runtime = "nodejs";
 
 interface InsightsBody {
-  metrics: {
-    label: string;
-    value: string | number;
-  }[];
+  metrics: { label: string; value: string | number }[];
 }
 
 export async function POST(req: Request) {
-  const ai = getGenAIClient();
-  if (!ai) return missingKeyResponse();
+  if (!getHfToken()) return missingTokenResponse();
 
   let body: InsightsBody;
   try {
@@ -32,14 +28,10 @@ ${metricsText}
 Write a tight executive summary for a fashion brand merchandiser: 2 sentences on what's working, 1 sentence flagging the single biggest risk or opportunity, and 1 short actionable recommendation. Plain text, no markdown, no headers, under 75 words total. Speak directly to "you".`;
 
   try {
-    const response = await ai.models.generateContent({
-      model: TEXT_MODEL,
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      config: { temperature: 0.6 },
-    });
-
-    return Response.json({ ok: true, summary: (response.text ?? "").trim() });
-  } catch (err: any) {
-    return errorResponse(err?.message ?? "Gemini request failed.", 500);
+    const summary = await hfChatCompletion([{ role: "user", content: prompt }], 0.6);
+    return Response.json({ ok: true, summary: summary.trim() });
+  } catch (err) {
+    const { message, status } = friendlyHfTextError(err);
+    return errorResponse(message, status);
   }
 }

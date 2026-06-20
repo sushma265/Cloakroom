@@ -57,8 +57,8 @@ export default function DemoShell({ initialTab }: { initialTab: string }) {
           Try the AI rail yourself
         </h1>
         <p className="mt-2 max-w-2xl text-sm text-creamDim">
-          Every panel below calls Gemini 2.5 Flash directly. Bring your own photos, your
-          own product, your own numbers.
+          Every panel below calls Hugging Face directly — open-model chat completions for
+          the text features, and a real virtual try-on model for the render.
         </p>
 
         {configured === false && <div className="mt-6"><SetupBanner /></div>}

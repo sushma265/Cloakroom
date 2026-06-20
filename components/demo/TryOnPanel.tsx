@@ -3,9 +3,21 @@
 import { useState } from "react";
 import ImageDrop, { ImagePayload } from "./ImageDrop";
 
+interface TryOnImage {
+  url?: string;
+  data?: string;
+  mimeType?: string;
+}
+
 interface TryOnResult {
-  image: ImagePayload;
+  image: TryOnImage;
   note: string;
+}
+
+function imageSrc(image: TryOnImage) {
+  if (image.url) return image.url;
+  if (image.data) return `data:${image.mimeType ?? "image/png"};base64,${image.data}`;
+  return "";
 }
 
 export default function TryOnPanel() {
@@ -42,8 +54,11 @@ export default function TryOnPanel() {
       <div>
         <h3 className="font-display text-xl text-cream">Virtual try-on engine</h3>
         <p className="mt-1.5 text-sm text-creamDim">
-          Upload a photo of a person and a garment. The fit-prediction and draping engine
-          composites the two and returns a fit prediction note.
+          Upload a photo of a person and a garment. Rendered live by the IDM-VTON
+          virtual try-on model, hosted free on Hugging Face.
+        </p>
+        <p className="mt-2 font-tag text-[10px] uppercase tracking-wide text-brassDim">
+          Runs on a shared community GPU queue — first render may take 30–90s
         </p>
 
         <div className="mt-6 grid grid-cols-2 gap-4">
@@ -53,12 +68,12 @@ export default function TryOnPanel() {
 
         <label className="mt-5 block">
           <span className="mb-1.5 block font-tag text-[11px] uppercase tracking-wide text-creamDim/70">
-            Styling note (optional)
+            Garment description (optional)
           </span>
           <input
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="e.g. tucked in, sleeves rolled up"
+            placeholder="e.g. cropped denim jacket"
             className="w-full rounded-md border border-cream/20 bg-ink2 px-3 py-2.5 text-sm text-cream placeholder:text-creamDim/40 focus:border-brass focus:outline-none"
           />
         </label>
@@ -84,20 +99,20 @@ export default function TryOnPanel() {
           {loading ? (
             <div className="flex flex-col items-center gap-3 text-creamDim/70">
               <div className="h-8 w-8 animate-spin rounded-full border-2 border-brass/30 border-t-brass" />
-              <p className="text-sm">Rendering on Gemini 2.5 Flash Image…</p>
+              <p className="text-sm">Rendering on the shared GPU queue…</p>
             </div>
           ) : result ? (
             <div className="w-full">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={`data:${result.image.mimeType};base64,${result.image.data}`}
+                src={imageSrc(result.image)}
                 alt="Virtual try-on result"
                 className="mx-auto max-h-[420px] rounded-md object-contain"
               />
               {result.note && (
                 <p className="mt-4 rounded-md border border-brass/25 bg-velvet/30 px-4 py-3 text-sm leading-relaxed text-creamDim">
                   <span className="mr-1 font-tag text-[10px] uppercase tracking-wide text-brassLight">
-                    Fit note —
+                    Note —
                   </span>
                   {result.note}
                 </p>

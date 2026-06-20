@@ -1,4 +1,4 @@
-import { getGenAIClient, missingKeyResponse, errorResponse, TEXT_MODEL } from "@/lib/gemini";
+import { hfChatCompletion, friendlyHfTextError, missingTokenResponse, errorResponse, getHfToken } from "@/lib/huggingface";
 
 export const runtime = "nodejs";
 
@@ -20,8 +20,7 @@ const SYSTEM = `You are Cloakroom's Creator Studio copywriter. Creators turn a s
 }`;
 
 export async function POST(req: Request) {
-  const ai = getGenAIClient();
-  if (!ai) return missingKeyResponse();
+  if (!getHfToken()) return missingTokenResponse();
 
   let body: CreatorBody;
   try {
@@ -41,23 +40,20 @@ Vibe / aesthetic: ${body.vibe || "everyday, approachable"}
 Extra notes: ${body.notes || "none"}`;
 
   try {
-    const response = await ai.models.generateContent({
-      model: TEXT_MODEL,
-      contents: [
-        { role: "user", parts: [{ text: `${SYSTEM}\n\n${userPrompt}` }] },
+    const raw = await hfChatCompletion(
+      [
+        { role: "system", content: SYSTEM },
+        { role: "user", content: userPrompt },
       ],
-      config: { temperature: 0.9 },
-    });
+      0.9
+    );
 
-    const raw = (response.text ?? "").trim();
-    const cleaned = raw.replace(/^```json/i, "").replace(/^```/, "").replace(/```$/, "").trim();
+    const cleaned = raw.trim().replace(/^```json/i, "").replace(/^```/, "").replace(/```$/, "").trim();
     const parsed = JSON.parse(cleaned);
 
     return Response.json({ ok: true, drop: parsed });
-  } catch (err: any) {
-    return errorResponse(
-      err?.message ?? "Gemini request failed or returned content that couldn't be parsed.",
-      500
-    );
+  } catch (err) {
+    const { message, status } = friendlyHfTextError(err);
+    return errorResponse(message, status);
   }
 }

@@ -1,21 +1,15 @@
-import { getGenAIClient, missingKeyResponse, errorResponse, TEXT_MODEL } from "@/lib/gemini";
+import { hfChatCompletion, friendlyHfTextError, missingTokenResponse, errorResponse, getHfToken, ChatMessage } from "@/lib/huggingface";
 
 export const runtime = "nodejs";
 
-interface ChatMessage {
-  role: "user" | "model";
-  text: string;
-}
-
 interface StylistBody {
-  history: ChatMessage[];
+  history: { role: "user" | "model"; text: string }[];
 }
 
 const SYSTEM = `You are the Cloakroom AI Stylist, a roadmap preview feature for a fashion AI platform. You give warm, specific, brief styling advice (outfit pairing, fit, occasion-appropriateness, color combinations). Ask at most one short clarifying question if truly needed, otherwise give concrete suggestions. Keep every reply under 80 words. Never mention you are an AI model from a specific company; you are "the Cloakroom Stylist".`;
 
 export async function POST(req: Request) {
-  const ai = getGenAIClient();
-  if (!ai) return missingKeyResponse();
+  if (!getHfToken()) return missingTokenResponse();
 
   let body: StylistBody;
   try {
@@ -27,24 +21,19 @@ export async function POST(req: Request) {
   const history = Array.isArray(body?.history) ? body.history.slice(-12) : [];
   if (!history.length) return errorResponse("A message is required.", 400);
 
-  const contents = [
-    { role: "user" as const, parts: [{ text: SYSTEM }] },
-    { role: "model" as const, parts: [{ text: "Understood — I'm the Cloakroom Stylist, ready to help." }] },
+  const messages: ChatMessage[] = [
+    { role: "system", content: SYSTEM },
     ...history.map((m) => ({
-      role: m.role,
-      parts: [{ text: m.text }],
+      role: (m.role === "model" ? "assistant" : "user") as "assistant" | "user",
+      content: m.text,
     })),
   ];
 
   try {
-    const response = await ai.models.generateContent({
-      model: TEXT_MODEL,
-      contents,
-      config: { temperature: 0.8 },
-    });
-
-    return Response.json({ ok: true, reply: (response.text ?? "").trim() });
-  } catch (err: any) {
-    return errorResponse(err?.message ?? "Gemini request failed.", 500);
+    const reply = await hfChatCompletion(messages, 0.8);
+    return Response.json({ ok: true, reply: reply.trim() });
+  } catch (err) {
+    const { message, status } = friendlyHfTextError(err);
+    return errorResponse(message, status);
   }
 }
